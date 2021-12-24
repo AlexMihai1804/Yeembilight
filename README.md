@@ -9,5 +9,5 @@ Install:
 GUI update:  
 -an icon (who have any ideas or can make one, please help)  
 -a new look(any ideas are helpful)  
-Individual brightness controll
+Individual brightness controll  
 And more
