@@ -6,33 +6,10 @@ from yeelight import Bulb
 from tkinter import *
 from tkinter import messagebox
 import threading
-import tkinter as tk
 
 bulbs = []
 rate = 60 / 144
 run = False
-
-
-def rgb_to_hsv(r, g, b):
-    r, g, b = r / 255.0, g / 255.0, b / 255.0
-    mx = max(r, g, b)
-    mn = min(r, g, b)
-    df = mx - mn
-    h = None
-    if mx == mn:
-        h = 0
-    elif mx == r:
-        h = (60 * ((g - b) / df) + 360) % 360
-    elif mx == g:
-        h = (60 * ((b - r) / df) + 120) % 360
-    elif mx == b:
-        h = (60 * ((r - g) / df) + 240) % 360
-    if mx == 0:
-        s = 0
-    else:
-        s = (df / mx) * 100
-    v = mx * 100
-    return h, s, v
 
 
 # 0-WHOLE SCREEN
@@ -42,6 +19,27 @@ def rgb_to_hsv(r, g, b):
 
 
 def determine_hsv(scr, position):
+    def rgb_to_hsv(r, g, b):
+        r, g, b = r / 255.0, g / 255.0, b / 255.0
+        mx = max(r, g, b)
+        mn = min(r, g, b)
+        df = mx - mn
+        h = None
+        if mx == mn:
+            h = 0
+        elif mx == r:
+            h = (60 * ((g - b) / df) + 360) % 360
+        elif mx == g:
+            h = (60 * ((b - r) / df) + 120) % 360
+        elif mx == b:
+            h = (60 * ((r - g) / df) + 240) % 360
+        if mx == 0:
+            s = 0
+        else:
+            s = (df / mx) * 100
+        v = mx * 100
+        return h, s, v
+
     r = 0
     g = 0
     b = 0
@@ -116,42 +114,39 @@ def get_screenshot():
     return scr
 
 
-def file_load():
-    ok = True
-    if os.path.isfile('config.txt'):
-        file = open('config.txt', 'r')
-        lines = file.readlines()
-        file.close()
-        for x in range(1, len(lines)):
-            line = str(lines[x])
-            ip = None
-            position = None
-            error = False
-            if line[1] == ' ':
-                position = int(line[0])
-                ip = line[2:-1]
-            elif line[2] == ' ':
-                position = int(line[0]) * 10 + int(line[1])
-                ip = line[3:-1]
-            try:
-                Bulb(ip).get_properties()
-            except:
-                ok = False
-                error = True
-                print(position)
-            if not error:
-                bulbs.append((position, BulbYeelight(ip), ip))
-            else:
-                print(ip)
-    else:
-        messagebox.showinfo(title='Config file created', message='No config file detected!\nCreated configuration file')
-        file = open('config.txt', 'w')
-        file.write("Configuration file\n")
-        file.close()
-    return ok
-
-
 def load():
+    def file_load():
+        ok = True
+        if os.path.isfile('config.txt'):
+            file = open('config.txt', 'r')
+            lines = file.readlines()
+            file.close()
+            for x in range(1, len(lines)):
+                line = str(lines[x])
+                ip = None
+                position = None
+                error = False
+                if line[1] == ' ':
+                    position = int(line[0])
+                    ip = line[2:-1]
+                elif line[2] == ' ':
+                    position = int(line[0]) * 10 + int(line[1])
+                    ip = line[3:-1]
+                try:
+                    Bulb(ip).get_properties()
+                except:
+                    ok = False
+                    error = True
+                if not error:
+                    bulbs.append((position, BulbYeelight(ip), ip))
+        else:
+            messagebox.showinfo(title='Config file created',
+                                message='No config file detected!\nCreated configuration file')
+            file = open('config.txt', 'w')
+            file.write("Configuration file\n")
+            file.close()
+        return ok
+
     ok = file_load()
     while not ok:
         if messagebox.askretrycancel(title="Load error", message="Some bulbs can't be loaded\nMAKE SURE IS POWERED ON "
@@ -174,108 +169,170 @@ def save_configuration_to_file():
 
 
 def modify_configuration():
+    def exit_from_config():
+        configuration_window.destroy()
+        start_button['state'] = NORMAL
+        config_button['state'] = NORMAL
+        exit_button['state'] = NORMAL
+
     global configuration_window
     global bulb_list
     global start_button
     global config_button
     global exit_button
-    global add_bulb_button
-    global del_bulb_button
-    global exit_button_config
-    start_button['state'] = tk.DISABLED
-    config_button['state'] = tk.DISABLED
-    exit_button['state'] = tk.DISABLED
+    start_button['state'] = DISABLED
+    config_button['state'] = DISABLED
+    exit_button['state'] = DISABLED
     configuration_window = Tk()
     configuration_window.resizable(False, False)
     configuration_window.title("Edit Configuration")
-    bulb_list = Listbox(configuration_window, font=("Arial", 12), width=35, height=8)
-    bulb_list.grid(row=0, rowspan=3, column=0)
+    bulb_list = Listbox(configuration_window, font=("Arial", 12), width=35, height=10)
+    bulb_list.grid(row=0, rowspan=4, column=0)
     show_bulbs()
     add_bulb_button = Button(configuration_window, text="Add new bulb", command=add_bulb, font=("Arial", 20), width=17)
     add_bulb_button.grid(row=0, column=1)
+    edit_bulb_button = Button(configuration_window, text="Edit selected bulb", command=edit_bulb, font=("Arial", 20),
+                              width=17)
+    edit_bulb_button.grid(row=1, column=1)
     del_bulb_button = Button(configuration_window, text="Delete selected bulb", command=del_bulb, font=("Arial", 20),
                              width=17)
-    del_bulb_button.grid(row=1, column=1)
+    del_bulb_button.grid(row=2, column=1)
     exit_button_config = Button(configuration_window, text="Exit", command=exit_from_config,
                                 font=("Arial", 20), width=17)
-    exit_button_config.grid(row=2, column=1)
+    exit_button_config.grid(row=3, column=1)
+    configuration_window.protocol("WM_DELETE_WINDOW", exit_from_config)
     configuration_window.mainloop()
 
 
-def exit_from_config():
+def edit_bulb():
+    global bulb_list
+    global add_bulb_window
     global configuration_window
-    global start_button
-    global config_button
-    global exit_button
-    configuration_window.destroy()
-    start_button['state'] = tk.NORMAL
-    config_button['state'] = tk.NORMAL
-    exit_button['state'] = tk.NORMAL
-
-
-def exit_from_add():
-    global start_button
-    global config_button
-    global exit_button
-    global add_bulb_window
-    start_button['state'] = tk.NORMAL
-    config_button['state'] = tk.NORMAL
-    exit_button['state'] = tk.NORMAL
-    add_bulb_window.destroy()
-
-
-def add_bulb_in_list():
-    global position_input
-    global ip_entry_box
-    global add_bulb_window
-    ip = str(ip_entry_box.get())
-    pos = str(position_input.get())
-    if pos == "WHOLE SCREEN":
-        pos = 0
-    elif pos == "TOP":
-        pos = 1
-    elif pos == "LEFT":
-        pos = 2
-    elif pos == "BOTTOM":
-        pos = 3
-    elif pos == "RIGHT":
-        pos = 4
-    elif pos == "TOP-CENTRE":
-        pos = 5
-    elif pos == "LEFT-CENTRE":
-        pos = 6
-    elif pos == "BOTTOM-CENTRE":
-        pos = 7
-    elif pos == "RIGHT-CENTRE":
-        pos = 8
-    elif pos == "CORNER-TOP-LEFT":
-        pos = 9
-    elif pos == "CORNER-BOTTOM-LEFT":
-        pos = 10
-    elif pos == "CORNER-BOTTOM-RIGHT":
-        pos = 11
-    elif pos == "CORNER-TOP-RIGHT":
-        pos = 12
-    error = False
-    try:
-        Bulb(ip).get_properties()
-    except:
-        error = True
-        messagebox.showerror(title='ERROR!', message='Wrong ip or bulb is offline')
-    if not error:
-        bulbs.append((pos, BulbYeelight(ip), ip))
-        file = open('config.txt', 'a')
-        file.write(str(pos) + ' ' + ip + '\n')
-        add_bulb_window.destroy()
+    global position_change
+    def save_edit():
+        pos = str(position_change.get())
+        if pos == "WHOLE SCREEN":
+            pos = 0
+        elif pos == "TOP":
+            pos = 1
+        elif pos == "LEFT":
+            pos = 2
+        elif pos == "BOTTOM":
+            pos = 3
+        elif pos == "RIGHT":
+            pos = 4
+        elif pos == "TOP-CENTRE":
+            pos = 5
+        elif pos == "LEFT-CENTRE":
+            pos = 6
+        elif pos == "BOTTOM-CENTRE":
+            pos = 7
+        elif pos == "RIGHT-CENTRE":
+            pos = 8
+        elif pos == "CORNER-TOP-LEFT":
+            pos = 9
+        elif pos == "CORNER-BOTTOM-LEFT":
+            pos = 10
+        elif pos == "CORNER-BOTTOM-RIGHT":
+            pos = 11
+        elif pos == "CORNER-TOP-RIGHT":
+            pos = 12
+        position, bulb, ip = bulbs[k]
+        position = pos
+        bulbs[k] = (position, bulb, ip)
+        save_configuration_to_file()
+        edit_window.destroy()
         modify_configuration()
+    def exit_edit():
+        global start_button
+        global config_button
+        global exit_button
+        start_button['state'] = NORMAL
+        config_button['state'] = NORMAL
+        exit_button['state'] = NORMAL
+        edit_window.destroy()
+    try:
+        k = int(bulb_list.curselection()[0])
+        configuration_window.destroy()
+        edit_window=Tk()
+        edit_window.resizable(False, False)
+        edit_window.title("Edit bulb's info")
+        position_change = StringVar(edit_window)
+        position_change.set("WHOLE SCREEN")
+        position_option_menu = OptionMenu(edit_window, position_change, "WHOLE SCREEN", "TOP", "LEFT", "BOTTOM",
+                                          "RIGHT",
+                                          "TOP-CENTRE",
+                                          "LEFT-CENTRE", "BOTTOM-CENTRE", "RIGHT-CENTRE", "CORNER-TOP-LEFT",
+                                          "LEFT-CENTRE",
+                                          "CORNER-BOTTOM-RIGHT", "CORNER-TOP-RIGHT")
+        position_option_menu.config(font=("Arial", 15), width=30, height=1)
+        position_option_menu.pack()
+        done_button=Button(edit_window, text="Save curent settings", command=save_edit, font=("Arial", 20),width=22)
+        done_button.pack()
+        exit_button = Button(edit_window, text="Exit", command=exit_edit, font=("Arial", 20), width=22)
+        exit_button.pack()
+        edit_window.protocol("WM_DELETE_WINDOW", exit_edit)
+        edit_window.mainloop()
+    except:
+        messagebox.showerror(title='ERROR!', message='You need to select a bulb in order to edit')
 
 
 def add_bulb():
+    def add_bulb_in_list():
+        ip = str(ip_entry_box.get())
+        pos = str(position_input.get())
+        if pos == "WHOLE SCREEN":
+            pos = 0
+        elif pos == "TOP":
+            pos = 1
+        elif pos == "LEFT":
+            pos = 2
+        elif pos == "BOTTOM":
+            pos = 3
+        elif pos == "RIGHT":
+            pos = 4
+        elif pos == "TOP-CENTRE":
+            pos = 5
+        elif pos == "LEFT-CENTRE":
+            pos = 6
+        elif pos == "BOTTOM-CENTRE":
+            pos = 7
+        elif pos == "RIGHT-CENTRE":
+            pos = 8
+        elif pos == "CORNER-TOP-LEFT":
+            pos = 9
+        elif pos == "CORNER-BOTTOM-LEFT":
+            pos = 10
+        elif pos == "CORNER-BOTTOM-RIGHT":
+            pos = 11
+        elif pos == "CORNER-TOP-RIGHT":
+            pos = 12
+        error = False
+        try:
+            Bulb(ip).get_properties()
+        except:
+            error = True
+            messagebox.showerror(title='ERROR!', message='Wrong ip or bulb is offline')
+        if not error:
+            bulbs.append((pos, BulbYeelight(ip), ip))
+            file = open('config.txt', 'a')
+            file.write(str(pos) + ' ' + ip + '\n')
+            add_bulb_window.destroy()
+            modify_configuration()
+
+    def exit_from_add():
+        global start_button
+        global config_button
+        global exit_button
+        start_button['state'] = NORMAL
+        config_button['state'] = NORMAL
+        exit_button['state'] = NORMAL
+        add_bulb_window.destroy()
+
     global position_input
     global ip_entry_box
     global add_bulb_window
     global configuration_window
-    global add_bulb_window
     configuration_window.destroy()
     add_bulb_window = Tk()
     add_bulb_window.resizable(False, False)
@@ -296,6 +353,7 @@ def add_bulb():
     add_button.grid(column=1, row=0, rowspan=2)
     exit_add = Button(add_bulb_window, text="Exit", command=exit_from_add, font=("Arial", 20), width=10)
     exit_add.grid(column=1, row=2)
+    add_bulb_window.protocol("WM_DELETE_WINDOW", exit_from_add)
     add_bulb_window.mainloop()
 
 
@@ -307,7 +365,6 @@ def del_bulb():
         k = int(bulb_list.curselection()[0])
         configuration_window.destroy()
         bulbs.pop(k)
-        print(len(bulbs))
         save_configuration_to_file()
         modify_configuration()
     except:
@@ -356,12 +413,12 @@ def start():
     if run:
         t = threading.Thread(target=sync_with_bulbs)
         t.start()
-        config_button['state'] = tk.DISABLED
-        exit_button['state'] = tk.DISABLED
+        config_button['state'] = DISABLED
+        exit_button['state'] = DISABLED
         start_button["text"] = "Stop"
     else:
-        config_button['state'] = tk.NORMAL
-        exit_button['state'] = tk.NORMAL
+        config_button['state'] = NORMAL
+        exit_button['state'] = NORMAL
         start_button["text"] = "Start"
 
 
@@ -392,9 +449,17 @@ def sync_with_bulbs():
 
 
 if __name__ == "__main__":
+    def close_main_window():
+        global main_window
+        global run
+        run = False
+        main_window.destroy()
+
+
     global start_button
     global config_button
     global exit_button
+    global main_window
     load()
     main_window = Tk()
     main_window.resizable(False, False)
@@ -406,4 +471,5 @@ if __name__ == "__main__":
     config_button.grid(row=1, column=0)
     exit_button = Button(main_window, text="Exit", command=main_window.destroy, font=("Arial", 20), width=15)
     exit_button.grid(row=1, column=1)
+    main_window.protocol("WM_DELETE_WINDOW", close_main_window)
     main_window.mainloop()
