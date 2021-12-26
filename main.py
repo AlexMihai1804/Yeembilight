@@ -1,4 +1,5 @@
 from bulb_yeelight import BulbYeelight
+from yeelight import discover_bulbs
 import pyautogui
 import time
 import os
@@ -6,6 +7,7 @@ from yeelight import Bulb
 from tkinter import *
 from tkinter import messagebox
 import threading
+import ifaddr
 
 bulbs = []
 rate = 60 / 144
@@ -232,14 +234,14 @@ def modify_configuration():
     global start_button
     global config_button
     global exit_button
-    global icon
+    # global icon
     start_button['state'] = DISABLED
     config_button['state'] = DISABLED
     exit_button['state'] = DISABLED
     configuration_window = Tk()
     configuration_window.resizable(False, False)
     configuration_window.title("Edit Configuration")
-    configuration_window.iconphoto(True, icon)
+    #configuration_window.iconphoto(True, icon)
     bulb_list = Listbox(configuration_window, font=("Arial", 12), width=50, height=14)
     bulb_list.grid(row=0, rowspan=5, column=0)
     show_bulbs()
@@ -266,30 +268,40 @@ def add_bulb_auto():
     bulb_ips = []
 
     def auto_discover():
-        def try_ip(ip):
+        def try_one_adapter(z):
             try:
-                Bulb(ip).get_properties()
-                new_bulb = True
-                for x in bulbs:
-                    if x[2] == ip:
-                        new_bulb = False
-                        break
-                if new_bulb:
-                    bulb_ips.append(ip)
-                    discovered_bulbs_list.insert(discovered_bulbs_list.size(), ip)
+                d = discover_bulbs(interface=z)
+                for x in d:
+                    line = str(x)
+                    k1 = line.find('ip') + 6
+                    k2 = line.find('port') - 4
+                    ip = line[k1:k2]
+                    new_bulb = True
+                    for x in bulbs:
+                        if x[2] == ip:
+                            new_bulb = False
+                            break
+                    if new_bulb:
+                        bulb_ips.append(ip)
+                        discovered_bulbs_list.insert(discovered_bulbs_list.size(), ip)
             except:
                 pass
 
-        for i in range(2):
-            for j in range(256):
-                ip = "192.168." + str(i) + '.' + str(j)
-                x = threading.Thread(target=try_ip, args=(ip,))
-                x.start()
+        adap = ifaddr.get_adapters()
+        for x in range(len(adap)):
+            k = str(adap[x].nice_name)
+            if 'virtual' in k:
+                continue
+            elif 'Virtual' in k:
+                continue
+            z = adap[x].name
+            o = threading.Thread(target=try_one_adapter, args=(z,))
+            o.start()
 
     def add_bulb_in_list():
         try:
             k = int(discovered_bulbs_list.curselection()[0])
-            bulbs.append((position_string_to_int(position_input.get()), Bulb(bulb_ips[k - 1]), bulb_ips[k - 1],
+            bulbs.append((position_string_to_int(position_input.get()), BulbYeelight(bulb_ips[k - 1]), bulb_ips[k - 1],
                           int(brightness_slider.get())))
             save_configuration_to_file()
             auto_add_window.destroy()
@@ -307,12 +319,12 @@ def add_bulb_auto():
         auto_add_window.destroy()
 
     global configuration_window
-    global icon
+    #global icon
     configuration_window.destroy()
     auto_add_window = Tk()
     auto_add_window.resizable(False, False)
     auto_add_window.title("Auto add bulbs")
-    auto_add_window.iconphoto(True, icon)
+    #auto_add_window.iconphoto(True, icon)
     discovered_bulbs_list = Listbox(auto_add_window, font=("Arial", 12), width=50, height=12)
     discovered_bulbs_list.grid(row=0, rowspan=5, column=0)
     auto_discover()
@@ -345,7 +357,8 @@ def edit_bulb():
     global add_bulb_window
     global configuration_window
     global position_change
-    global icon
+
+    #global icon
 
     def save_edit():
         pos, bulb, ip, bright = bulbs[k]
@@ -371,7 +384,7 @@ def edit_bulb():
         edit_window = Tk()
         edit_window.resizable(False, False)
         edit_window.title("Edit bulb's info")
-        edit_window.iconphoto(True, icon)
+        #edit_window.iconphoto(True, icon)
         position_text = Label(edit_window, text="Select bulb's position", font=("Arial", 20))
         position_text.pack()
         position_change = StringVar(edit_window)
@@ -432,12 +445,12 @@ def add_bulb():
     global ip_entry_box
     global add_bulb_window
     global configuration_window
-    global icon
+    #global icon
     configuration_window.destroy()
     add_bulb_window = Tk()
     add_bulb_window.resizable(False, False)
     add_bulb_window.title("Add a new bulb")
-    add_bulb_window.iconphoto(True, icon)
+    #add_bulb_window.iconphoto(True, icon)
     position_text = Label(add_bulb_window, text="Select bulb's position", font=("Arial", 20))
     position_text.grid(column=0, row=0)
     position_input = StringVar(add_bulb_window)
@@ -545,13 +558,13 @@ if __name__ == "__main__":
     global config_button
     global exit_button
     global main_window
-    global icon
+    #global icon
     load()
     main_window = Tk()
     main_window.resizable(False, False)
     main_window.title("Yeembilight")
-    icon = PhotoImage(file="Logo2.png")
-    main_window.iconphoto(True, icon)
+    #icon = PhotoImage(file="Logo2.png")
+    #main_window.iconphoto(True, icon)
     start_button = Button(main_window, text="Start", command=start, font=("Arial", 20), width=30)
     start_button.grid(row=0, column=0, columnspan=2)
     config_button = Button(main_window, text="Edit configuration", command=modify_configuration, font=("Arial", 20),
