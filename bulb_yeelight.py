@@ -3,22 +3,23 @@ import time
 
 
 class BulbYeelight:
-    initial_power = None
-    initial_brightness = None
-    initial_color_temp = None
-    initial_r_value = None
-    initial_g_value = None
-    initial_b_value = None
-    initial_color_mode = None
-    bulb = []
-    bulbs = 3
-    rate = 60 / 144
-    transition_time = (60 / 144) * 1000
-    i = 0
-    time_after = None
-    time_before = None
 
     def __init__(self, ip):
+        self.initial_power = None
+        self.initial_brightness = None
+        self.initial_color_temp = None
+        self.initial_r_value = None
+        self.initial_g_value = None
+        self.initial_b_value = None
+        self.initial_color_mode = None
+        self.bulb = []
+        self.bulbs = 3
+        self.rate = 60 / 144
+        self.transition_time = (60 / 144) * 1000
+        self.i = 0
+        self.time_after = None
+        self.time_before = None
+        self.nume = ip
         self.time_after = float(time.time())
         for x in range(self.bulbs + 1):
             self.time_before = float(time.time())
@@ -84,6 +85,14 @@ class BulbYeelight:
         self.i += 1
         self.i %= self.bulbs
 
+    def identify(self):
+        print(self.nume)
+        self.initial_state()
+        self.set_color(255, 0, 0)
+        self.set_color(0, 255, 0)
+        self.set_color(0, 0, 255)
+        self.revert_to_initial()
+
     def turn_on(self):
         self.time_before = float(time.time())
         self.bulb[self.i].turn_on()
@@ -95,15 +104,9 @@ class BulbYeelight:
             self.bulb[self.i].set_brightness(self.initial_brightness)
             self.after_interact()
             self.time_before = float(time.time())
-            self.bulb[self.i].set_color_temp(self.initial_color_temp)
-            self.after_interact()
-            self.time_before = float(time.time())
             self.bulb[self.i].set_rgb(self.initial_r_value, self.initial_g_value, self.initial_b_value)
             self.after_interact()
         else:
-            self.time_before = float(time.time())
-            self.bulb[self.i].set_rgb(self.initial_r_value, self.initial_g_value, self.initial_b_value)
-            self.after_interact()
             self.time_before = float(time.time())
             self.bulb[self.i].set_brightness(self.initial_brightness)
             self.after_interact()

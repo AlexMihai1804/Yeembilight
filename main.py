@@ -14,11 +14,6 @@ rate = 60 / 144
 run = False
 
 
-# 0-WHOLE SCREEN
-# 1-TOP 2-LEFT 3-BOTTOM 4-RIGHT
-# 5-TOP-CENTRE 6-LEFT-CENTRE 7-BOTTOM-CENTRE 8-RIGHT-CENTRE
-# 9-CORNER-TOP-LEFT 10-CORNER-BOTTOM-LEFT 11-CORNER-BOTTOM-RIGHT 12-CORNER-TOP-RIGHT
-
 def position_int_to_string(pos):
     if pos == 0:
         pos = "WHOLE SCREEN"
@@ -79,6 +74,10 @@ def position_string_to_int(pos):
     return pos
 
 
+# 0-WHOLE SCREEN
+# 1-TOP 2-LEFT 3-BOTTOM 4-RIGHT
+# 5-TOP-CENTRE 6-LEFT-CENTRE 7-BOTTOM-CENTRE 8-RIGHT-CENTRE
+# 9-CORNER-TOP-LEFT 10-CORNER-BOTTOM-LEFT 11-CORNER-BOTTOM-RIGHT 12-CORNER-TOP-RIGHT
 def determine_hsv(scr, position):
     r = 0
     g = 0
@@ -95,7 +94,7 @@ def determine_hsv(scr, position):
         b = int(b / 9)
     elif position == 1:
         for x in range(0, 3):
-            k, i, j = scr.getpixel((0, x))
+            k, i, j = scr.getpixel((x, 0))
             r += k
             g += i
             b += j
@@ -104,7 +103,7 @@ def determine_hsv(scr, position):
         b = int(b / 3)
     elif position == 2:
         for x in range(0, 3):
-            k, i, j = scr.getpixel((x, 0))
+            k, i, j = scr.getpixel((0, x))
             r += k
             g += i
             b += j
@@ -113,7 +112,7 @@ def determine_hsv(scr, position):
         b = int(b / 3)
     elif position == 3:
         for x in range(0, 3):
-            k, i, j = scr.getpixel((2, x))
+            k, i, j = scr.getpixel((x, 2))
             r += k
             g += i
             b += j
@@ -122,7 +121,7 @@ def determine_hsv(scr, position):
         b = int(b / 3)
     elif position == 4:
         for x in range(0, 3):
-            k, i, j = scr.getpixel((x, 2))
+            k, i, j = scr.getpixel((2, x))
             r += k
             g += i
             b += j
@@ -130,21 +129,21 @@ def determine_hsv(scr, position):
         g = int(g / 3)
         b = int(b / 3)
     elif position == 5:
-        r, g, b = scr.getpixel((0, 1))
-    elif position == 6:
         r, g, b = scr.getpixel((1, 0))
+    elif position == 6:
+        r, g, b = scr.getpixel((0, 1))
     elif position == 7:
-        r, g, b = scr.getpixel((2, 1))
-    elif position == 8:
         r, g, b = scr.getpixel((1, 2))
+    elif position == 8:
+        r, g, b = scr.getpixel((2, 1))
     elif position == 9:
         r, g, b = scr.getpixel((0, 0))
     elif position == 10:
-        r, g, b = scr.getpixel((2, 0))
+        r, g, b = scr.getpixel((0, 2))
     elif position == 11:
         r, g, b = scr.getpixel((2, 2))
     elif position == 12:
-        r, g, b = scr.getpixel((0, 2))
+        r, g, b = scr.getpixel((2, 0))
     r, g, b = r / 255.0, g / 255.0, b / 255.0
     mx = max(r, g, b)
     mn = min(r, g, b)
@@ -173,26 +172,35 @@ def get_screenshot():
 
 def load():
     def file_load():
+        global is_ok
         is_ok = True
+
+        def load_line(line):
+            global is_ok
+            k1 = line.find(' ')
+            k2 = line.rfind(' ')
+            position = int(line[0:k1])
+            ip = str(line[k1 + 1:k2])
+            bright = int(line[k2 + 1:])
+            error = False
+            try:
+                Bulb(ip).get_properties()
+            except:
+                is_ok = False
+                error = True
+            if not error:
+                bulbs.append((position, BulbYeelight(ip), ip, bright))
+
         if os.path.isfile('config.txt'):
             file = open('config.txt', 'r')
             lines = file.readlines()
             file.close()
             lines.pop(0)
-            for line in lines:
-                k1 = line.find(' ')
-                k2 = line.rfind(' ')
-                position = int(line[0:k1])
-                ip = str(line[k1 + 1:k2])
-                bright = int(line[k2 + 1:])
-                error = False
-                try:
-                    Bulb(ip).get_properties()
-                except:
-                    is_ok = False
-                    error = True
-                if not error:
-                    bulbs.append((position, BulbYeelight(ip), ip, bright))
+            for l in lines:
+                o = threading.Thread(target=load_line, args=(l,))
+                o.start()
+            while threading.active_count() > 1:
+                time.sleep(0.05)
         else:
             messagebox.showinfo(title='Config file created',
                                 message='No config file detected!\nCreated configuration file')
@@ -229,8 +237,19 @@ def modify_configuration():
         config_button['state'] = NORMAL
         exit_button['state'] = NORMAL
 
-    global configuration_window
+    def identify():
+        try:
+            bulbs[bulb_list.curselection()[0]][1].identify()
+            print(bulbs[bulb_list.curselection()[0]][1].nume)
+        except:
+            messagebox.showerror(title='ERROR!', message='You need to select a bulb')
+
     global bulb_list
+    global add_bulb_button
+    global add_bulb_auto_button
+    global edit_bulb_button
+    global del_bulb_button
+    global exit_button_config
     global start_button
     global config_button
     global exit_button
@@ -241,27 +260,56 @@ def modify_configuration():
     configuration_window = Tk()
     configuration_window.resizable(False, False)
     configuration_window.title("Edit Configuration")
-    #configuration_window.iconphoto(True, icon)
-    bulb_list = Listbox(configuration_window, font=("Arial", 12), width=50, height=14)
-    bulb_list.grid(row=0, rowspan=5, column=0)
+    # configuration_window.iconphoto(True, icon)
+    bulb_list = Listbox(configuration_window, font=("Arial", 12), width=50, height=15)
+    bulb_list.grid(row=0, rowspan=6, column=0)
     show_bulbs()
-    add_bulb_button = Button(configuration_window, text="Add new bulb manual", command=add_bulb, font=("Arial", 20),
+    add_bulb_button = Button(configuration_window, text="Add new bulb manual", command=add_bulb, font=("Arial", 17),
                              width=17)
     add_bulb_button.grid(row=1, column=1)
     add_bulb_auto_button = Button(configuration_window, text="Add new bulb auto", command=add_bulb_auto,
-                                  font=("Arial", 20), width=17)
+                                  font=("Arial", 17), width=17)
     add_bulb_auto_button.grid(row=0, column=1)
-    edit_bulb_button = Button(configuration_window, text="Edit selected bulb", command=edit_bulb, font=("Arial", 20),
+    edit_bulb_button = Button(configuration_window, text="Edit selected bulb", command=edit_bulb, font=("Arial", 17),
                               width=17)
     edit_bulb_button.grid(row=2, column=1)
-    del_bulb_button = Button(configuration_window, text="Delete selected bulb", command=del_bulb, font=("Arial", 20),
+    del_bulb_button = Button(configuration_window, text="Delete selected bulb", command=del_bulb, font=("Arial", 17),
                              width=17)
     del_bulb_button.grid(row=3, column=1)
     exit_button_config = Button(configuration_window, text="Exit", command=exit_from_config,
-                                font=("Arial", 20), width=17)
-    exit_button_config.grid(row=4, column=1)
+                                font=("Arial", 17), width=17)
+    exit_button_config.grid(row=5, column=1)
+    identify_button_config = Button(configuration_window, text="Identify selected", command=identify,
+                                    font=("Arial", 17), width=17)
+    identify_button_config.grid(row=4, column=1)
     configuration_window.protocol("WM_DELETE_WINDOW", exit_from_config)
     configuration_window.mainloop()
+
+
+def disable_config_buttons():
+    global add_bulb_button
+    global add_bulb_auto_button
+    global edit_bulb_button
+    global del_bulb_button
+    global exit_button_config
+    add_bulb_button['state'] = DISABLED
+    add_bulb_auto_button['state'] = DISABLED
+    edit_bulb_button['state'] = DISABLED
+    del_bulb_button['state'] = DISABLED
+    exit_button_config['state'] = DISABLED
+
+
+def enable_config_buttons():
+    global add_bulb_button
+    global add_bulb_auto_button
+    global edit_bulb_button
+    global del_bulb_button
+    global exit_button_config
+    add_bulb_button['state'] = NORMAL
+    add_bulb_auto_button['state'] = NORMAL
+    edit_bulb_button['state'] = NORMAL
+    del_bulb_button['state'] = NORMAL
+    exit_button_config['state'] = NORMAL
 
 
 def add_bulb_auto():
@@ -277,8 +325,8 @@ def add_bulb_auto():
                     k2 = line.find('port') - 4
                     ip = line[k1:k2]
                     new_bulb = True
-                    for x in bulbs:
-                        if x[2] == ip:
+                    for b in bulbs:
+                        if b[2] == ip:
                             new_bulb = False
                             break
                     if new_bulb:
@@ -288,104 +336,110 @@ def add_bulb_auto():
                 pass
 
         adap = ifaddr.get_adapters()
-        for x in range(len(adap)):
-            k = str(adap[x].nice_name)
+        for j in range(len(adap)):
+            k = str(adap[j].nice_name)
             if 'virtual' in k:
                 continue
             elif 'Virtual' in k:
                 continue
-            z = adap[x].name
-            o = threading.Thread(target=try_one_adapter, args=(z,))
+            a = adap[j].name
+            o = threading.Thread(target=try_one_adapter, args=(a,))
             o.start()
 
     def add_bulb_in_list():
+        global bulb_list
         try:
             k = int(discovered_bulbs_list.curselection()[0])
             bulbs.append((position_string_to_int(position_input.get()), BulbYeelight(bulb_ips[k - 1]), bulb_ips[k - 1],
                           int(brightness_slider.get())))
+            bulb_ips.pop(k - 1)
+            discovered_bulbs_list.delete(k)
+            x = len(bulbs) - 1
+            pos = position_int_to_string(bulbs[x][0])
+            bulb_list.insert(x + 1, pos + ' ' + bulbs[x][2] + " brightness " + str(bulbs[x][3]) + '%')
             save_configuration_to_file()
-            auto_add_window.destroy()
-            modify_configuration()
         except:
             messagebox.showerror(title='ERROR!', message='You need to select a bulb in order to add it')
 
-    def exit_from_add():
-        global start_button
-        global config_button
-        global exit_button
-        start_button['state'] = NORMAL
-        config_button['state'] = NORMAL
-        exit_button['state'] = NORMAL
-        auto_add_window.destroy()
+    def identify():
+        try:
+            k = int(discovered_bulbs_list.curselection()[0])
+            BulbYeelight(bulb_ips[k - 1]).identify()
+        except:
+            messagebox.showerror(title='ERROR!', message='You need to select a bulb')
 
-    global configuration_window
-    #global icon
-    configuration_window.destroy()
+    def exit_from_add():
+        auto_add_window.destroy()
+        enable_config_buttons()
+
+    # global icon
+    disable_config_buttons()
     auto_add_window = Tk()
     auto_add_window.resizable(False, False)
     auto_add_window.title("Auto add bulbs")
-    #auto_add_window.iconphoto(True, icon)
+    # auto_add_window.iconphoto(True, icon)
     discovered_bulbs_list = Listbox(auto_add_window, font=("Arial", 12), width=50, height=12)
-    discovered_bulbs_list.grid(row=0, rowspan=5, column=0)
+    discovered_bulbs_list.grid(row=0, rowspan=6, column=0)
     auto_discover()
-    position_text = Label(auto_add_window, text="Select bulb's position", font=("Arial", 20))
+    position_text = Label(auto_add_window, text="Select bulb's position", font=("Arial", 17))
     position_text.grid(column=1, row=0, columnspan=2)
     position_input = StringVar(auto_add_window)
     position_input.set("WHOLE SCREEN")
     position_option_menu = OptionMenu(auto_add_window, position_input, "WHOLE SCREEN", "TOP", "LEFT", "BOTTOM", "RIGHT",
                                       "TOP-CENTRE",
-                                      "LEFT-CENTRE", "BOTTOM-CENTRE", "RIGHT-CENTRE", "CORNER-TOP-LEFT", "LEFT-CENTRE",
+                                      "LEFT-CENTRE", "BOTTOM-CENTRE", "RIGHT-CENTRE", "CORNER-TOP-LEFT",
+                                      "CORNER-BOTTOM-LEFT",
                                       "CORNER-BOTTOM-RIGHT", "CORNER-TOP-RIGHT")
     position_option_menu.config(font=("Arial", 15), width=30, height=1)
     position_option_menu.grid(column=1, row=1, columnspan=2)
-    brightness_text = Label(auto_add_window, text="Select bulb's brightness", font=("Arial", 20))
+    brightness_text = Label(auto_add_window, text="Select bulb's brightness", font=("Arial", 17))
     brightness_text.grid(column=1, row=2, columnspan=2)
     brightness_slider = Scale(auto_add_window, from_=100, to=0, orient=HORIZONTAL, tickinterval=10, resolution=10,
                               font=("Arial", 10), length=350)
     brightness_slider.set(100)
     brightness_slider.grid(column=1, row=3, columnspan=2)
-    add_button = Button(auto_add_window, text="Add", command=add_bulb_in_list, font=("Arial", 20), width=10)
-    add_button.grid(column=1, row=4)
-    exit_add = Button(auto_add_window, text="Exit", command=exit_from_add, font=("Arial", 20), width=10)
-    exit_add.grid(column=2, row=4)
+    identity_button = Button(auto_add_window, text="Identify selected", command=identify, font=("Arial", 17), width=27)
+    identity_button.grid(column=1, row=4, columnspan=2)
+    add_button = Button(auto_add_window, text="Add", command=add_bulb_in_list, font=("Arial", 17), width=13)
+    add_button.grid(column=1, row=5)
+    exit_add = Button(auto_add_window, text="Exit", command=exit_from_add, font=("Arial", 17), width=13)
+    exit_add.grid(column=2, row=5)
     auto_add_window.protocol("WM_DELETE_WINDOW", exit_from_add)
     auto_add_window.mainloop()
 
 
 def edit_bulb():
     global bulb_list
-    global add_bulb_window
-    global configuration_window
     global position_change
 
-    #global icon
+    # global icon
 
     def save_edit():
         pos, bulb, ip, bright = bulbs[k]
         pos = position_string_to_int(str(position_change.get()))
         bright = int(brightness_slider.get())
         bulbs[k] = (pos, bulb, ip, bright)
+        bulb_list['state'] = NORMAL
+        bulb_list.delete(k)
+        pos = position_int_to_string(bulbs[k][0])
+        bulb_list.insert(k + 1, pos + ' ' + bulbs[k][2] + " brightness " + str(bulbs[k][3]) + '%')
         save_configuration_to_file()
-        edit_window.destroy()
-        modify_configuration()
+        exit_edit()
 
     def exit_edit():
-        global start_button
-        global config_button
-        global exit_button
-        start_button['state'] = NORMAL
-        config_button['state'] = NORMAL
-        exit_button['state'] = NORMAL
         edit_window.destroy()
+        bulb_list['state'] = NORMAL
+        enable_config_buttons()
 
     try:
         k = int(bulb_list.curselection()[0])
-        configuration_window.destroy()
+        bulb_list['state'] = DISABLED
+        disable_config_buttons()
         edit_window = Tk()
         edit_window.resizable(False, False)
         edit_window.title("Edit bulb's info")
-        #edit_window.iconphoto(True, icon)
-        position_text = Label(edit_window, text="Select bulb's position", font=("Arial", 20))
+        # edit_window.iconphoto(True, icon)
+        position_text = Label(edit_window, text="Select bulb's position", font=("Arial", 17))
         position_text.pack()
         position_change = StringVar(edit_window)
         position_change.set(position_int_to_string(bulbs[k][0]))
@@ -393,19 +447,19 @@ def edit_bulb():
                                           "RIGHT",
                                           "TOP-CENTRE",
                                           "LEFT-CENTRE", "BOTTOM-CENTRE", "RIGHT-CENTRE", "CORNER-TOP-LEFT",
-                                          "LEFT-CENTRE",
+                                          "CORNER-BOTTOM-LEFT",
                                           "CORNER-BOTTOM-RIGHT", "CORNER-TOP-RIGHT")
         position_option_menu.config(font=("Arial", 15), width=30, height=1)
         position_option_menu.pack()
-        brightness_text = Label(edit_window, text="Select bulb's brightness", font=("Arial", 20))
+        brightness_text = Label(edit_window, text="Select bulb's brightness", font=("Arial", 17))
         brightness_text.pack()
         brightness_slider = Scale(edit_window, from_=100, to=0, orient=HORIZONTAL, tickinterval=10, resolution=10,
                                   font=("Arial", 10), length=350)
         brightness_slider.set(bulbs[k][3])
         brightness_slider.pack()
-        done_button = Button(edit_window, text="Save current settings", command=save_edit, font=("Arial", 20), width=22)
+        done_button = Button(edit_window, text="Save current settings", command=save_edit, font=("Arial", 17), width=22)
         done_button.pack()
-        exit_button = Button(edit_window, text="Exit", command=exit_edit, font=("Arial", 20), width=22)
+        exit_button = Button(edit_window, text="Exit", command=exit_edit, font=("Arial", 17), width=22)
         exit_button.pack()
         edit_window.protocol("WM_DELETE_WINDOW", exit_edit)
         edit_window.mainloop()
@@ -415,8 +469,10 @@ def edit_bulb():
 
 def add_bulb():
     def add_bulb_in_list():
+        global bulb_list
         ip = str(ip_entry_box.get())
         pos = str(position_input.get())
+        pos_txt = pos
         pos = position_string_to_int(pos)
         bright = int(brightness_slider.get())
         error = False
@@ -427,68 +483,60 @@ def add_bulb():
             messagebox.showerror(title='ERROR!', message='Wrong ip or bulb is offline')
         if not error:
             bulbs.append((pos, BulbYeelight(ip), ip, bright))
+            title = pos_txt + ' ' + ip + " brightness " + str(bright) + '%'
+            bulb_list.insert(bulb_list.size(), title)
             file = open('config.txt', 'a')
             file.write(str(pos) + ' ' + ip + ' ' + str(bright) + '\n')
             add_bulb_window.destroy()
-            modify_configuration()
 
     def exit_from_add():
-        global start_button
-        global config_button
-        global exit_button
-        start_button['state'] = NORMAL
-        config_button['state'] = NORMAL
-        exit_button['state'] = NORMAL
         add_bulb_window.destroy()
+        enable_config_buttons()
 
-    global position_input
     global ip_entry_box
     global add_bulb_window
-    global configuration_window
-    #global icon
-    configuration_window.destroy()
+    # global icon
+    disable_config_buttons()
     add_bulb_window = Tk()
     add_bulb_window.resizable(False, False)
     add_bulb_window.title("Add a new bulb")
-    #add_bulb_window.iconphoto(True, icon)
-    position_text = Label(add_bulb_window, text="Select bulb's position", font=("Arial", 20))
+    # add_bulb_window.iconphoto(True, icon)
+    position_text = Label(add_bulb_window, text="Select bulb's position", font=("Arial", 17))
     position_text.grid(column=0, row=0)
     position_input = StringVar(add_bulb_window)
     position_input.set("WHOLE SCREEN")
     position_option_menu = OptionMenu(add_bulb_window, position_input, "WHOLE SCREEN", "TOP", "LEFT", "BOTTOM", "RIGHT",
                                       "TOP-CENTRE",
-                                      "LEFT-CENTRE", "BOTTOM-CENTRE", "RIGHT-CENTRE", "CORNER-TOP-LEFT", "LEFT-CENTRE",
+                                      "LEFT-CENTRE", "BOTTOM-CENTRE", "RIGHT-CENTRE", "CORNER-TOP-LEFT",
+                                      "CORNER-BOTTOM-LEFT",
                                       "CORNER-BOTTOM-RIGHT", "CORNER-TOP-RIGHT")
     position_option_menu.config(font=("Arial", 15), width=30, height=1)
     position_option_menu.grid(column=0, row=1)
-    info_text = Label(add_bulb_window, text="Enter bulb's ip", font=("Arial", 20))
+    info_text = Label(add_bulb_window, text="Enter bulb's ip", font=("Arial", 17))
     info_text.grid(column=0, row=2)
-    ip_entry_box = Entry(add_bulb_window, font=("Arial", 20))
+    ip_entry_box = Entry(add_bulb_window, font=("Arial", 17))
     ip_entry_box.grid(column=0, row=3)
-    brightness_text = Label(add_bulb_window, text="Select bulb's brightness", font=("Arial", 20))
+    brightness_text = Label(add_bulb_window, text="Select bulb's brightness", font=("Arial", 17))
     brightness_text.grid(column=0, row=4)
     brightness_slider = Scale(add_bulb_window, from_=100, to=0, orient=HORIZONTAL, tickinterval=10, resolution=10,
                               font=("Arial", 10), length=350)
     brightness_slider.set(100)
     brightness_slider.grid(column=0, row=5)
-    add_button = Button(add_bulb_window, text="Add", command=add_bulb_in_list, font=("Arial", 20), height=3, width=10)
+    add_button = Button(add_bulb_window, text="Add", command=add_bulb_in_list, font=("Arial", 17), height=4, width=10)
     add_button.grid(column=1, row=0, rowspan=3)
-    exit_add = Button(add_bulb_window, text="Exit", command=exit_from_add, font=("Arial", 20), height=3, width=10)
-    exit_add.grid(column=1, row=4, rowspan=3)
+    exit_add = Button(add_bulb_window, text="Exit", command=exit_from_add, font=("Arial", 17), height=4, width=10)
+    exit_add.grid(column=1, row=3, rowspan=3)
     add_bulb_window.protocol("WM_DELETE_WINDOW", exit_from_add)
     add_bulb_window.mainloop()
 
 
 def del_bulb():
     global bulb_list
-    global add_bulb_window
-    global configuration_window
     try:
         k = int(bulb_list.curselection()[0])
-        configuration_window.destroy()
+        bulb_list.delete(k)
         bulbs.pop(k)
         save_configuration_to_file()
-        modify_configuration()
     except:
         messagebox.showerror(title='ERROR!', message='You need to select a bulb in order to remove')
 
@@ -507,6 +555,8 @@ def start():
     global exit_button
     global start_button
     if run:
+        while threading.active_count() > 1:
+            time.sleep(0.05)
         t = threading.Thread(target=sync_with_bulbs)
         t.start()
         config_button['state'] = DISABLED
@@ -519,10 +569,19 @@ def start():
 
 
 def sync_with_bulbs():
-    bulbs.sort()
-    for x in bulbs:
-        x[1].initial_state()
-    time.sleep(rate)
+    bulbs.sort(key=lambda x: x[0])
+
+    def save_state(i):
+        bulbs[i][1].initial_state()
+
+    def revert_state(i):
+        bulbs[i][1].revert_to_initial()
+
+    for i in range(len(bulbs)):
+        x = threading.Thread(target=save_state, args=(i,))
+        x.start()
+    while threading.active_count() > 2:
+        time.sleep(0.05)
     time_after = float(time.time())
     while run:
         scr = get_screenshot()
@@ -542,8 +601,11 @@ def sync_with_bulbs():
         if time_since_last < rate:
             time.sleep(rate - time_since_last)
         time_after = float(time.time())
-    for x in bulbs:
-        x[1].revert_to_initial()
+    for i in range(len(bulbs)):
+        x = threading.Thread(target=revert_state, args=(i,))
+        x.start()
+    while threading.active_count() > 2:
+        time.sleep(0.05)
 
 
 if __name__ == "__main__":
@@ -558,13 +620,13 @@ if __name__ == "__main__":
     global config_button
     global exit_button
     global main_window
-    #global icon
+    # global icon
     load()
     main_window = Tk()
     main_window.resizable(False, False)
     main_window.title("Yeembilight")
-    #icon = PhotoImage(file="Logo2.png")
-    #main_window.iconphoto(True, icon)
+    # icon = PhotoImage(file="Logo2.png")
+    # main_window.iconphoto(True, icon)
     start_button = Button(main_window, text="Start", command=start, font=("Arial", 20), width=30)
     start_button.grid(row=0, column=0, columnspan=2)
     config_button = Button(main_window, text="Edit configuration", command=modify_configuration, font=("Arial", 20),
