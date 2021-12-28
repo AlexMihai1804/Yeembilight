@@ -7,10 +7,8 @@ Install:
 **Windows** download the .exe file from releases and run it  
 **Linux** download repository and run main.py file. Before you run main.py for the first time you need to run ```pip install yeelight, pyautogui, pillow```
 # Future features
-GUI update:  
--an icon (who have any ideas or can make one, please help)  
--a new look(any ideas are helpful)  
-Individual brightness control  
+GUI update:   
+-a new look(any ideas are helpful)   
 And more
 # Devices  
 I only have W3 bulbs but all yeelight products should work.  
