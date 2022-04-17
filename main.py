@@ -10,7 +10,7 @@ import threading
 import ifaddr
 
 bulbs = []
-rate = 60 / 144
+rate = 60 / 600
 run = False
 
 
@@ -196,8 +196,8 @@ def load():
             lines = file.readlines()
             file.close()
             lines.pop(0)
-            for l in lines:
-                o = threading.Thread(target=load_line, args=(l,))
+            for line in lines:
+                o = threading.Thread(target=load_line, args=(line,))
                 o.start()
             while threading.active_count() > 1:
                 time.sleep(0.05)
@@ -240,7 +240,6 @@ def modify_configuration():
     def identify():
         try:
             bulbs[bulb_list.curselection()[0]][1].identify()
-            print(bulbs[bulb_list.curselection()[0]][1].nume)
         except:
             messagebox.showerror(title='ERROR!', message='You need to select a bulb')
 
@@ -253,14 +252,13 @@ def modify_configuration():
     global start_button
     global config_button
     global exit_button
-    # global icon
     start_button['state'] = DISABLED
     config_button['state'] = DISABLED
     exit_button['state'] = DISABLED
     configuration_window = Tk()
     configuration_window.resizable(False, False)
     configuration_window.title("Edit Configuration")
-    # configuration_window.iconphoto(True, icon)
+    configuration_window.iconbitmap('Logo2.ico')
     bulb_list = Listbox(configuration_window, font=("Arial", 12), width=50, height=15)
     bulb_list.grid(row=0, rowspan=6, column=0)
     show_bulbs()
@@ -372,12 +370,11 @@ def add_bulb_auto():
         auto_add_window.destroy()
         enable_config_buttons()
 
-    # global icon
     disable_config_buttons()
     auto_add_window = Tk()
     auto_add_window.resizable(False, False)
     auto_add_window.title("Auto add bulbs")
-    # auto_add_window.iconphoto(True, icon)
+    auto_add_window.iconbitmap('Logo2.ico')
     discovered_bulbs_list = Listbox(auto_add_window, font=("Arial", 12), width=50, height=12)
     discovered_bulbs_list.grid(row=0, rowspan=6, column=0)
     auto_discover()
@@ -412,8 +409,6 @@ def edit_bulb():
     global bulb_list
     global position_change
 
-    # global icon
-
     def save_edit():
         pos, bulb, ip, bright = bulbs[k]
         pos = position_string_to_int(str(position_change.get()))
@@ -438,7 +433,7 @@ def edit_bulb():
         edit_window = Tk()
         edit_window.resizable(False, False)
         edit_window.title("Edit bulb's info")
-        # edit_window.iconphoto(True, icon)
+        edit_window.iconbitmap('Logo2.ico')
         position_text = Label(edit_window, text="Select bulb's position", font=("Arial", 17))
         position_text.pack()
         position_change = StringVar(edit_window)
@@ -495,12 +490,11 @@ def add_bulb():
 
     global ip_entry_box
     global add_bulb_window
-    # global icon
     disable_config_buttons()
     add_bulb_window = Tk()
     add_bulb_window.resizable(False, False)
     add_bulb_window.title("Add a new bulb")
-    # add_bulb_window.iconphoto(True, icon)
+    add_bulb_window.iconbitmap('Logo2.ico')
     position_text = Label(add_bulb_window, text="Select bulb's position", font=("Arial", 17))
     position_text.grid(column=0, row=0)
     position_input = StringVar(add_bulb_window)
@@ -610,7 +604,6 @@ def sync_with_bulbs():
 
 if __name__ == "__main__":
     def close_main_window():
-        global main_window
         global run
         run = False
         main_window.destroy()
@@ -619,14 +612,11 @@ if __name__ == "__main__":
     global start_button
     global config_button
     global exit_button
-    global main_window
-    # global icon
     load()
     main_window = Tk()
     main_window.resizable(False, False)
     main_window.title("Yeembilight")
-    # icon = PhotoImage(file="Logo2.png")
-    # main_window.iconphoto(True, icon)
+    main_window.iconbitmap('Logo2.ico')
     start_button = Button(main_window, text="Start", command=start, font=("Arial", 20), width=30)
     start_button.grid(row=0, column=0, columnspan=2)
     config_button = Button(main_window, text="Edit configuration", command=modify_configuration, font=("Arial", 20),
