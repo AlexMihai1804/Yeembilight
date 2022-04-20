@@ -211,9 +211,9 @@ def load():
 
     ok = file_load()
     while not ok:
-        if messagebox.askretrycancel(title="Load error", message="Some bulbs can't be loaded\nMAKE SURE IS POWERED ON "
+        if messagebox.askretrycancel(title="Load error", message="Some lights can't be loaded\nMAKE SURE IS POWERED ON "
                                                                  "AND CONNECTED TO WIFI AND THEN TRY AGAIN\nRetry-try"
-                                                                 " again Cancel-Continue with loaded bulbs"):
+                                                                 " again Cancel-Continue with loaded lights"):
             while len(bulbs) > 0:
                 bulbs.pop()
             ok = file_load()
@@ -241,7 +241,7 @@ def modify_configuration():
         try:
             bulbs[bulb_list.curselection()[0]][1].identify()
         except:
-            messagebox.showerror(title='ERROR!', message='You need to select a bulb')
+            messagebox.showerror(title='ERROR!', message='You need to select a light')
 
     global bulb_list
     global add_bulb_button
@@ -258,20 +258,20 @@ def modify_configuration():
     configuration_window = Tk()
     configuration_window.resizable(False, False)
     configuration_window.title("Edit Configuration")
-    configuration_window.iconbitmap('Logo2.ico')
+    # configuration_window.iconbitmap('Logo2.ico')
     bulb_list = Listbox(configuration_window, font=("Arial", 12), width=50, height=15)
     bulb_list.grid(row=0, rowspan=6, column=0)
     show_bulbs()
-    add_bulb_button = Button(configuration_window, text="Add new bulb manual", command=add_bulb, font=("Arial", 17),
+    add_bulb_button = Button(configuration_window, text="Add new light manual", command=add_bulb, font=("Arial", 17),
                              width=17)
     add_bulb_button.grid(row=1, column=1)
-    add_bulb_auto_button = Button(configuration_window, text="Add new bulb auto", command=add_bulb_auto,
+    add_bulb_auto_button = Button(configuration_window, text="Add new light auto", command=add_bulb_auto,
                                   font=("Arial", 17), width=17)
     add_bulb_auto_button.grid(row=0, column=1)
-    edit_bulb_button = Button(configuration_window, text="Edit selected bulb", command=edit_bulb, font=("Arial", 17),
+    edit_bulb_button = Button(configuration_window, text="Edit selected light", command=edit_bulb, font=("Arial", 17),
                               width=17)
     edit_bulb_button.grid(row=2, column=1)
-    del_bulb_button = Button(configuration_window, text="Delete selected bulb", command=del_bulb, font=("Arial", 17),
+    del_bulb_button = Button(configuration_window, text="Delete selected light", command=del_bulb, font=("Arial", 17),
                              width=17)
     del_bulb_button.grid(row=3, column=1)
     exit_button_config = Button(configuration_window, text="Exit", command=exit_from_config,
@@ -348,23 +348,28 @@ def add_bulb_auto():
         global bulb_list
         try:
             k = int(discovered_bulbs_list.curselection()[0])
-            bulbs.append((position_string_to_int(position_input.get()), BulbYeelight(bulb_ips[k - 1]), bulb_ips[k - 1],
-                          int(brightness_slider.get())))
-            bulb_ips.pop(k - 1)
-            discovered_bulbs_list.delete(k)
-            x = len(bulbs) - 1
-            pos = position_int_to_string(bulbs[x][0])
-            bulb_list.insert(x + 1, pos + ' ' + bulbs[x][2] + " brightness " + str(bulbs[x][3]) + '%')
-            save_configuration_to_file()
+            prop = Bulb(bulb_ips[k-1]).get_capabilities()
+            if ' set_hsv ' in prop['support'] or ' bg_set_hsv ' in prop['support']:
+                bulbs.append(
+                    (position_string_to_int(position_input.get()), BulbYeelight(bulb_ips[k - 1]), bulb_ips[k - 1],
+                     int(brightness_slider.get())))
+                bulb_ips.pop(k - 1)
+                discovered_bulbs_list.delete(k)
+                x = len(bulbs) - 1
+                pos = position_int_to_string(bulbs[x][0])
+                bulb_list.insert(x + 1, pos + ' ' + bulbs[x][2] + " brightness " + str(bulbs[x][3]) + '%')
+                save_configuration_to_file()
+            else:
+                messagebox.showerror(title='ERROR!', message='Light not supported')
         except:
-            messagebox.showerror(title='ERROR!', message='You need to select a bulb in order to add it')
+            messagebox.showerror(title='ERROR!', message='You need to select a light in order to add it')
 
     def identify():
         try:
             k = int(discovered_bulbs_list.curselection()[0])
             BulbYeelight(bulb_ips[k - 1]).identify()
         except:
-            messagebox.showerror(title='ERROR!', message='You need to select a bulb')
+            messagebox.showerror(title='ERROR!', message='You need to select a light')
 
     def exit_from_add():
         auto_add_window.destroy()
@@ -373,12 +378,12 @@ def add_bulb_auto():
     disable_config_buttons()
     auto_add_window = Tk()
     auto_add_window.resizable(False, False)
-    auto_add_window.title("Auto add bulbs")
-    auto_add_window.iconbitmap('Logo2.ico')
+    auto_add_window.title("Auto add lights")
+    # auto_add_window.iconbitmap('Logo2.ico')
     discovered_bulbs_list = Listbox(auto_add_window, font=("Arial", 12), width=50, height=12)
     discovered_bulbs_list.grid(row=0, rowspan=6, column=0)
     auto_discover()
-    position_text = Label(auto_add_window, text="Select bulb's position", font=("Arial", 17))
+    position_text = Label(auto_add_window, text="Select light's position", font=("Arial", 17))
     position_text.grid(column=1, row=0, columnspan=2)
     position_input = StringVar(auto_add_window)
     position_input.set("WHOLE SCREEN")
@@ -389,7 +394,7 @@ def add_bulb_auto():
                                       "CORNER-BOTTOM-RIGHT", "CORNER-TOP-RIGHT")
     position_option_menu.config(font=("Arial", 15), width=30, height=1)
     position_option_menu.grid(column=1, row=1, columnspan=2)
-    brightness_text = Label(auto_add_window, text="Select bulb's brightness", font=("Arial", 17))
+    brightness_text = Label(auto_add_window, text="Select light's brightness", font=("Arial", 17))
     brightness_text.grid(column=1, row=2, columnspan=2)
     brightness_slider = Scale(auto_add_window, from_=100, to=0, orient=HORIZONTAL, tickinterval=10, resolution=10,
                               font=("Arial", 10), length=350)
@@ -417,7 +422,7 @@ def edit_bulb():
         bulb_list['state'] = NORMAL
         bulb_list.delete(k)
         pos = position_int_to_string(bulbs[k][0])
-        bulb_list.insert(k + 1, pos + ' ' + bulbs[k][2] + " brightness " + str(bulbs[k][3]) + '%')
+        bulb_list.insert(k, pos + ' ' + bulbs[k][2] + " brightness " + str(bulbs[k][3]) + '%')
         save_configuration_to_file()
         exit_edit()
 
@@ -432,9 +437,9 @@ def edit_bulb():
         disable_config_buttons()
         edit_window = Tk()
         edit_window.resizable(False, False)
-        edit_window.title("Edit bulb's info")
-        edit_window.iconbitmap('Logo2.ico')
-        position_text = Label(edit_window, text="Select bulb's position", font=("Arial", 17))
+        edit_window.title("Edit light's info")
+        # edit_window.iconbitmap('Logo2.ico')
+        position_text = Label(edit_window, text="Select light's position", font=("Arial", 17))
         position_text.pack()
         position_change = StringVar(edit_window)
         position_change.set(position_int_to_string(bulbs[k][0]))
@@ -446,7 +451,7 @@ def edit_bulb():
                                           "CORNER-BOTTOM-RIGHT", "CORNER-TOP-RIGHT")
         position_option_menu.config(font=("Arial", 15), width=30, height=1)
         position_option_menu.pack()
-        brightness_text = Label(edit_window, text="Select bulb's brightness", font=("Arial", 17))
+        brightness_text = Label(edit_window, text="Select light's brightness", font=("Arial", 17))
         brightness_text.pack()
         brightness_slider = Scale(edit_window, from_=100, to=0, orient=HORIZONTAL, tickinterval=10, resolution=10,
                                   font=("Arial", 10), length=350)
@@ -459,7 +464,7 @@ def edit_bulb():
         edit_window.protocol("WM_DELETE_WINDOW", exit_edit)
         edit_window.mainloop()
     except:
-        messagebox.showerror(title='ERROR!', message='You need to select a bulb in order to edit')
+        messagebox.showerror(title='ERROR!', message='You need to select a light in order to edit')
 
 
 def add_bulb():
@@ -472,10 +477,15 @@ def add_bulb():
         bright = int(brightness_slider.get())
         error = False
         try:
-            Bulb(ip).get_properties()
+            prop = Bulb(ip).get_capabilities()
+            if ' set_hsv ' in prop['support'] or ' bg_set_hsv ' in prop['support']:
+                pass
+            else:
+                error = True
+                messagebox.showerror(title='ERROR!', message='Light not supported')
         except:
             error = True
-            messagebox.showerror(title='ERROR!', message='Wrong ip or bulb is offline')
+            messagebox.showerror(title='ERROR!', message='Wrong ip or light is offline')
         if not error:
             bulbs.append((pos, BulbYeelight(ip), ip, bright))
             title = pos_txt + ' ' + ip + " brightness " + str(bright) + '%'
@@ -493,9 +503,9 @@ def add_bulb():
     disable_config_buttons()
     add_bulb_window = Tk()
     add_bulb_window.resizable(False, False)
-    add_bulb_window.title("Add a new bulb")
-    add_bulb_window.iconbitmap('Logo2.ico')
-    position_text = Label(add_bulb_window, text="Select bulb's position", font=("Arial", 17))
+    add_bulb_window.title("Add a new light")
+    # add_bulb_window.iconbitmap('Logo2.ico')
+    position_text = Label(add_bulb_window, text="Select light's position", font=("Arial", 17))
     position_text.grid(column=0, row=0)
     position_input = StringVar(add_bulb_window)
     position_input.set("WHOLE SCREEN")
@@ -506,11 +516,11 @@ def add_bulb():
                                       "CORNER-BOTTOM-RIGHT", "CORNER-TOP-RIGHT")
     position_option_menu.config(font=("Arial", 15), width=30, height=1)
     position_option_menu.grid(column=0, row=1)
-    info_text = Label(add_bulb_window, text="Enter bulb's ip", font=("Arial", 17))
+    info_text = Label(add_bulb_window, text="Enter light's ip", font=("Arial", 17))
     info_text.grid(column=0, row=2)
     ip_entry_box = Entry(add_bulb_window, font=("Arial", 17))
     ip_entry_box.grid(column=0, row=3)
-    brightness_text = Label(add_bulb_window, text="Select bulb's brightness", font=("Arial", 17))
+    brightness_text = Label(add_bulb_window, text="Select light's brightness", font=("Arial", 17))
     brightness_text.grid(column=0, row=4)
     brightness_slider = Scale(add_bulb_window, from_=100, to=0, orient=HORIZONTAL, tickinterval=10, resolution=10,
                               font=("Arial", 10), length=350)
@@ -532,7 +542,7 @@ def del_bulb():
         bulbs.pop(k)
         save_configuration_to_file()
     except:
-        messagebox.showerror(title='ERROR!', message='You need to select a bulb in order to remove')
+        messagebox.showerror(title='ERROR!', message='You need to select a light in order to remove')
 
 
 def show_bulbs():
@@ -616,7 +626,7 @@ if __name__ == "__main__":
     main_window = Tk()
     main_window.resizable(False, False)
     main_window.title("Yeembilight")
-    main_window.iconbitmap('Logo2.ico')
+    # main_window.iconbitmap('Logo2.ico')
     start_button = Button(main_window, text="Start", command=start, font=("Arial", 20), width=30)
     start_button.grid(row=0, column=0, columnspan=2)
     config_button = Button(main_window, text="Edit configuration", command=modify_configuration, font=("Arial", 20),
