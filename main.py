@@ -1,6 +1,5 @@
 from bulb_yeelight import BulbYeelight
 from yeelight import discover_bulbs
-import pyautogui
 import time
 import os
 from yeelight import Bulb
@@ -8,6 +7,7 @@ from tkinter import *
 from tkinter import messagebox
 import threading
 import ifaddr
+from PIL import ImageGrab
 
 bulbs = []
 rate = 60 / 600
@@ -166,7 +166,7 @@ def determine_hsv(scr, position):
 
 
 def get_screenshot():
-    scr = pyautogui.screenshot().resize((3, 3))
+    scr = ImageGrab.grab().resize((3, 3))
     return scr
 
 
@@ -258,7 +258,7 @@ def modify_configuration():
     configuration_window = Tk()
     configuration_window.resizable(False, False)
     configuration_window.title("Edit Configuration")
-    # configuration_window.iconbitmap('Logo2.ico')
+    configuration_window.iconbitmap('Logo2.ico')
     bulb_list = Listbox(configuration_window, font=("Arial", 12), width=50, height=15)
     bulb_list.grid(row=0, rowspan=6, column=0)
     show_bulbs()
@@ -348,7 +348,7 @@ def add_bulb_auto():
         global bulb_list
         try:
             k = int(discovered_bulbs_list.curselection()[0])
-            prop = Bulb(bulb_ips[k-1]).get_capabilities()
+            prop = Bulb(bulb_ips[k - 1]).get_capabilities()
             if ' set_hsv ' in prop['support'] or ' bg_set_hsv ' in prop['support']:
                 bulbs.append(
                     (position_string_to_int(position_input.get()), BulbYeelight(bulb_ips[k - 1]), bulb_ips[k - 1],
@@ -379,7 +379,7 @@ def add_bulb_auto():
     auto_add_window = Tk()
     auto_add_window.resizable(False, False)
     auto_add_window.title("Auto add lights")
-    # auto_add_window.iconbitmap('Logo2.ico')
+    auto_add_window.iconbitmap('Logo2.ico')
     discovered_bulbs_list = Listbox(auto_add_window, font=("Arial", 12), width=50, height=12)
     discovered_bulbs_list.grid(row=0, rowspan=6, column=0)
     auto_discover()
@@ -438,7 +438,7 @@ def edit_bulb():
         edit_window = Tk()
         edit_window.resizable(False, False)
         edit_window.title("Edit light's info")
-        # edit_window.iconbitmap('Logo2.ico')
+        edit_window.iconbitmap('Logo2.ico')
         position_text = Label(edit_window, text="Select light's position", font=("Arial", 17))
         position_text.pack()
         position_change = StringVar(edit_window)
@@ -504,7 +504,7 @@ def add_bulb():
     add_bulb_window = Tk()
     add_bulb_window.resizable(False, False)
     add_bulb_window.title("Add a new light")
-    # add_bulb_window.iconbitmap('Logo2.ico')
+    add_bulb_window.iconbitmap('Logo2.ico')
     position_text = Label(add_bulb_window, text="Select light's position", font=("Arial", 17))
     position_text.grid(column=0, row=0)
     position_input = StringVar(add_bulb_window)
@@ -586,6 +586,7 @@ def sync_with_bulbs():
         x.start()
     while threading.active_count() > 2:
         time.sleep(0.05)
+    last_hsv = [[None for _ in range(3)] for _ in range(13)]
     time_after = float(time.time())
     while run:
         scr = get_screenshot()
@@ -594,13 +595,18 @@ def sync_with_bulbs():
         while i < len(bulbs):
             k = bulbs[i][0]
             h, s, v = determine_hsv(scr, k)
-            while bulbs[i][0] == k:
-                brightness = bulbs[i][3]
-                v1 = int(v * brightness / 100)
-                bulbs[i][1].set_hsv(h, s, v1)
-                i += 1
-                if i == len(bulbs):
-                    break
+            if last_hsv[k][0] == h and last_hsv[k][1] == s and last_hsv[k][2] == v:
+                while i < len(bulbs) and bulbs[i][0] == k:
+                    i += 1
+            else:
+                last_hsv[k][0] = h
+                last_hsv[k][1] = s
+                last_hsv[k][2] = v
+                while i < len(bulbs) and bulbs[i][0] == k:
+                    brightness = bulbs[i][3]
+                    v1 = int(v * brightness / 100)
+                    bulbs[i][1].set_hsv(h, s, v1)
+                    i += 1
         time_since_last = time_before - time_after
         if time_since_last < rate:
             time.sleep(rate - time_since_last)
@@ -626,7 +632,7 @@ if __name__ == "__main__":
     main_window = Tk()
     main_window.resizable(False, False)
     main_window.title("Yeembilight")
-    # main_window.iconbitmap('Logo2.ico')
+    main_window.iconbitmap('Logo2.ico')
     start_button = Button(main_window, text="Start", command=start, font=("Arial", 20), width=30)
     start_button.grid(row=0, column=0, columnspan=2)
     config_button = Button(main_window, text="Edit configuration", command=modify_configuration, font=("Arial", 20),

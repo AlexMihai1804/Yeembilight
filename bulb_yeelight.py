@@ -117,8 +117,6 @@ class BulbYeelight:
         time.sleep(self.wait_time)
 
     def set_hsv(self, h, s, v):
-        if self.hsv_type is None:
-            self.get_type()
         if self.hsv_type == 1 or self.hsv_type == 3:
             self.bulb.set_hsv(h, s, v)
         if self.hsv_type == 2 or self.hsv_type == 3:
