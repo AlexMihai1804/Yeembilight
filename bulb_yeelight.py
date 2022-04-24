@@ -19,7 +19,7 @@ class BulbYeelight:
         self.bg_initial_g_value = None
         self.bg_initial_b_value = None
         self.bg_initial_color_mode = None
-        self.bulb = Bulb(ip, effect="smooth", duration=100)
+        self.bulb = Bulb(ip)
         self.wait_time = 0.25
         self.type = None
         self.prop = None
@@ -116,11 +116,11 @@ class BulbYeelight:
             self.bulb.set_rgb(r, g, b, light_type=LightType.Ambient)
         time.sleep(self.wait_time)
 
-    def set_hsv(self, h, s, v):
+    def set_hsv(self, h, s, v, rate):
         if self.hsv_type == 1 or self.hsv_type == 3:
-            self.bulb.set_hsv(h, s, v)
+            self.bulb.set_hsv(h, s, v, effect="smooth", duration=rate)
         if self.hsv_type == 2 or self.hsv_type == 3:
-            self.bulb.set_rgb(h, s, v, light_type=LightType.Ambient)
+            self.bulb.set_hsv(h, s, v, light_type=LightType.Ambient)
 
     def identify(self):
         self.initial_state()

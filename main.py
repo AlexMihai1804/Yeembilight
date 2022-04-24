@@ -1,17 +1,21 @@
-from bulb_yeelight import BulbYeelight
-from yeelight import discover_bulbs
-import time
 import os
-from yeelight import Bulb
+import threading
+import time
 from tkinter import *
 from tkinter import messagebox
-import threading
+
 import ifaddr
-from PIL import ImageGrab
+from PIL import ImageGrab, ImageChops, Image
+from yeelight import Bulb
+from yeelight import discover_bulbs
+
+from bulb_yeelight import BulbYeelight
 
 bulbs = []
-rate = 60 / 600
+rate = 900
 run = False
+bar_correction = True
+bbox = None
 
 
 def position_int_to_string(pos):
@@ -165,9 +169,22 @@ def determine_hsv(scr, position):
     return h, s, v
 
 
-def get_screenshot():
-    scr = ImageGrab.grab().resize((3, 3))
-    return scr
+def get_screenshot(c):
+    def trim(im):
+        bg = Image.new(im.mode, im.size, im.getpixel((0, 0)))
+        diff = ImageChops.difference(im, bg)
+        diff = ImageChops.add(diff, diff, 2.0, -100)
+        return diff.getbbox()
+
+    global bar_correction
+    global bbox
+    scr = ImageGrab.grab().resize((120, 120))
+    if c == 0 and bar_correction is True:
+        bbox = trim(scr)
+    if bbox is None or bar_correction is False:
+        return scr.resize((3, 3))
+    else:
+        return scr.crop(bbox).resize((3, 3))
 
 
 def load():
@@ -196,16 +213,24 @@ def load():
             lines = file.readlines()
             file.close()
             lines.pop(0)
+            global bar_correction
+            if lines[0][0] == '0':
+                bar_correction = False
+            else:
+                bar_correction = True
+            global rate
+            rate = int(lines[0][2:])
+            lines.pop(0)
             for line in lines:
                 o = threading.Thread(target=load_line, args=(line,))
                 o.start()
             while threading.active_count() > 1:
-                time.sleep(0.05)
+                time.sleep(0.01)
         else:
             messagebox.showinfo(title='Config file created',
                                 message='No config file detected!\nCreated configuration file')
             file = open('config.txt', 'w')
-            file.write("Configuration file\n")
+            file.write("Configuration file\n0 144\n")
             file.close()
         return is_ok
 
@@ -225,6 +250,14 @@ def load():
 def save_configuration_to_file():
     file = open('config.txt', 'w')
     file.write("Configuration file\n")
+    global bar_correction
+    if bar_correction is True:
+        file.write('1 ')
+    else:
+        file.write('0 ')
+    global rate
+    file.write(str(rate))
+    file.write('\n')
     for x in bulbs:
         file.write(str(x[0]) + ' ' + x[2] + ' ' + str(x[3]) + '\n')
     file.close()
@@ -232,6 +265,9 @@ def save_configuration_to_file():
 
 def modify_configuration():
     def exit_from_config():
+        global rate
+        rate = int(rate_input.get())
+        save_configuration_to_file()
         configuration_window.destroy()
         start_button['state'] = NORMAL
         config_button['state'] = NORMAL
@@ -243,43 +279,87 @@ def modify_configuration():
         except:
             messagebox.showerror(title='ERROR!', message='You need to select a light')
 
+    def black_check_update():
+        global bar_correction
+        if check.get() == 1:
+            bar_correction = True
+        else:
+            bar_correction = False
+        save_configuration_to_file()
+
     global bulb_list
     global add_bulb_button
     global add_bulb_auto_button
+    global identify_button_config
     global edit_bulb_button
     global del_bulb_button
     global exit_button_config
     global start_button
     global config_button
     global exit_button
+    global main_window
+    global configuration_window
     start_button['state'] = DISABLED
     config_button['state'] = DISABLED
     exit_button['state'] = DISABLED
-    configuration_window = Tk()
+    configuration_window = Toplevel(main_window)
     configuration_window.resizable(False, False)
     configuration_window.title("Edit Configuration")
     configuration_window.iconbitmap('Logo2.ico')
-    bulb_list = Listbox(configuration_window, font=("Arial", 12), width=50, height=15)
-    bulb_list.grid(row=0, rowspan=6, column=0)
+    bulb_list = Listbox(configuration_window, font=("Arial", 12), width=50, height=10)
+    bulb_list.grid(row=0, rowspan=4, column=0, columnspan=2)
     show_bulbs()
     add_bulb_button = Button(configuration_window, text="Add new light manual", command=add_bulb, font=("Arial", 17),
                              width=17)
-    add_bulb_button.grid(row=1, column=1)
+    global bar_correction
+    if bar_correction is True:
+        check = IntVar(value=1)
+    else:
+        check = IntVar()
+    black_bar_check = Checkbutton(configuration_window, text="Correct black bars", variable=check,
+                                  command=black_check_update, font=("Arial", 17), width=15)
+    black_bar_check.grid(row=4, column=0, columnspan=2)
+    rate_text = Label(configuration_window, text="Updates per min (max 2500)", font=("Arial", 17))
+    rate_text.grid(row=5, column=0)
+
+    def validate(u_input):
+        if u_input.isdigit():
+            if rate_input.get() == '':
+                input_number = int(u_input)
+            else:
+                input_number = int(rate_input.get()) * 10 + int(u_input)
+            if input_number > 2500:
+                rate_input.delete(0, END)
+                rate_input.after_idle(lambda: rate_input.configure(validate="all"))
+                rate_input.insert(0, '')
+                return False
+            else:
+                return True
+        else:
+            return False
+
+    my_valid = configuration_window.register(validate)
+    rate_input = Entry(configuration_window, validate='key', validatecommand=(my_valid, '%S'), font=("Arial", 17),
+                       width=10)
+    rate_input.grid(row=5, column=1)
+    global rate
+    rate_input.insert(0, str(rate))
+    add_bulb_button.grid(row=1, column=2)
     add_bulb_auto_button = Button(configuration_window, text="Add new light auto", command=add_bulb_auto,
                                   font=("Arial", 17), width=17)
-    add_bulb_auto_button.grid(row=0, column=1)
+    add_bulb_auto_button.grid(row=0, column=2)
     edit_bulb_button = Button(configuration_window, text="Edit selected light", command=edit_bulb, font=("Arial", 17),
                               width=17)
-    edit_bulb_button.grid(row=2, column=1)
+    edit_bulb_button.grid(row=2, column=2)
     del_bulb_button = Button(configuration_window, text="Delete selected light", command=del_bulb, font=("Arial", 17),
                              width=17)
-    del_bulb_button.grid(row=3, column=1)
-    exit_button_config = Button(configuration_window, text="Exit", command=exit_from_config,
-                                font=("Arial", 17), width=17)
-    exit_button_config.grid(row=5, column=1)
+    del_bulb_button.grid(row=3, column=2)
+    exit_button_config = Button(configuration_window, text="Exit", command=exit_from_config, font=("Arial", 17),
+                                width=17)
+    exit_button_config.grid(row=5, column=2)
     identify_button_config = Button(configuration_window, text="Identify selected", command=identify,
                                     font=("Arial", 17), width=17)
-    identify_button_config.grid(row=4, column=1)
+    identify_button_config.grid(row=4, column=2)
     configuration_window.protocol("WM_DELETE_WINDOW", exit_from_config)
     configuration_window.mainloop()
 
@@ -290,11 +370,13 @@ def disable_config_buttons():
     global edit_bulb_button
     global del_bulb_button
     global exit_button_config
+    global identify_button_config
     add_bulb_button['state'] = DISABLED
     add_bulb_auto_button['state'] = DISABLED
     edit_bulb_button['state'] = DISABLED
     del_bulb_button['state'] = DISABLED
     exit_button_config['state'] = DISABLED
+    identify_button_config['state'] = DISABLED
 
 
 def enable_config_buttons():
@@ -303,11 +385,13 @@ def enable_config_buttons():
     global edit_bulb_button
     global del_bulb_button
     global exit_button_config
+    global identify_button_config
     add_bulb_button['state'] = NORMAL
     add_bulb_auto_button['state'] = NORMAL
     edit_bulb_button['state'] = NORMAL
     del_bulb_button['state'] = NORMAL
     exit_button_config['state'] = NORMAL
+    identify_button_config['state'] = NORMAL
 
 
 def add_bulb_auto():
@@ -375,8 +459,9 @@ def add_bulb_auto():
         auto_add_window.destroy()
         enable_config_buttons()
 
+    global configuration_window
     disable_config_buttons()
-    auto_add_window = Tk()
+    auto_add_window = Toplevel(configuration_window)
     auto_add_window.resizable(False, False)
     auto_add_window.title("Auto add lights")
     auto_add_window.iconbitmap('Logo2.ico')
@@ -388,10 +473,8 @@ def add_bulb_auto():
     position_input = StringVar(auto_add_window)
     position_input.set("WHOLE SCREEN")
     position_option_menu = OptionMenu(auto_add_window, position_input, "WHOLE SCREEN", "TOP", "LEFT", "BOTTOM", "RIGHT",
-                                      "TOP-CENTRE",
-                                      "LEFT-CENTRE", "BOTTOM-CENTRE", "RIGHT-CENTRE", "CORNER-TOP-LEFT",
-                                      "CORNER-BOTTOM-LEFT",
-                                      "CORNER-BOTTOM-RIGHT", "CORNER-TOP-RIGHT")
+                                      "TOP-CENTRE", "LEFT-CENTRE", "BOTTOM-CENTRE", "RIGHT-CENTRE", "CORNER-TOP-LEFT",
+                                      "CORNER-BOTTOM-LEFT", "CORNER-BOTTOM-RIGHT", "CORNER-TOP-RIGHT")
     position_option_menu.config(font=("Arial", 15), width=30, height=1)
     position_option_menu.grid(column=1, row=1, columnspan=2)
     brightness_text = Label(auto_add_window, text="Select light's brightness", font=("Arial", 17))
@@ -432,10 +515,11 @@ def edit_bulb():
         enable_config_buttons()
 
     try:
+        global configuration_window
         k = int(bulb_list.curselection()[0])
         bulb_list['state'] = DISABLED
         disable_config_buttons()
-        edit_window = Tk()
+        edit_window = Toplevel(configuration_window)
         edit_window.resizable(False, False)
         edit_window.title("Edit light's info")
         edit_window.iconbitmap('Logo2.ico')
@@ -444,11 +528,9 @@ def edit_bulb():
         position_change = StringVar(edit_window)
         position_change.set(position_int_to_string(bulbs[k][0]))
         position_option_menu = OptionMenu(edit_window, position_change, "WHOLE SCREEN", "TOP", "LEFT", "BOTTOM",
-                                          "RIGHT",
-                                          "TOP-CENTRE",
-                                          "LEFT-CENTRE", "BOTTOM-CENTRE", "RIGHT-CENTRE", "CORNER-TOP-LEFT",
-                                          "CORNER-BOTTOM-LEFT",
-                                          "CORNER-BOTTOM-RIGHT", "CORNER-TOP-RIGHT")
+                                          "RIGHT", "TOP-CENTRE", "LEFT-CENTRE", "BOTTOM-CENTRE", "RIGHT-CENTRE",
+                                          "CORNER-TOP-LEFT", "CORNER-BOTTOM-LEFT", "CORNER-BOTTOM-RIGHT",
+                                          "CORNER-TOP-RIGHT")
         position_option_menu.config(font=("Arial", 15), width=30, height=1)
         position_option_menu.pack()
         brightness_text = Label(edit_window, text="Select light's brightness", font=("Arial", 17))
@@ -500,8 +582,9 @@ def add_bulb():
 
     global ip_entry_box
     global add_bulb_window
+    global configuration_window
     disable_config_buttons()
-    add_bulb_window = Tk()
+    add_bulb_window = Toplevel(configuration_window)
     add_bulb_window.resizable(False, False)
     add_bulb_window.title("Add a new light")
     add_bulb_window.iconbitmap('Logo2.ico')
@@ -510,10 +593,8 @@ def add_bulb():
     position_input = StringVar(add_bulb_window)
     position_input.set("WHOLE SCREEN")
     position_option_menu = OptionMenu(add_bulb_window, position_input, "WHOLE SCREEN", "TOP", "LEFT", "BOTTOM", "RIGHT",
-                                      "TOP-CENTRE",
-                                      "LEFT-CENTRE", "BOTTOM-CENTRE", "RIGHT-CENTRE", "CORNER-TOP-LEFT",
-                                      "CORNER-BOTTOM-LEFT",
-                                      "CORNER-BOTTOM-RIGHT", "CORNER-TOP-RIGHT")
+                                      "TOP-CENTRE", "LEFT-CENTRE", "BOTTOM-CENTRE", "RIGHT-CENTRE", "CORNER-TOP-LEFT",
+                                      "CORNER-BOTTOM-LEFT", "CORNER-BOTTOM-RIGHT", "CORNER-TOP-RIGHT")
     position_option_menu.config(font=("Arial", 15), width=30, height=1)
     position_option_menu.grid(column=0, row=1)
     info_text = Label(add_bulb_window, text="Enter light's ip", font=("Arial", 17))
@@ -560,7 +641,7 @@ def start():
     global start_button
     if run:
         while threading.active_count() > 1:
-            time.sleep(0.05)
+            time.sleep(0.01)
         t = threading.Thread(target=sync_with_bulbs)
         t.start()
         config_button['state'] = DISABLED
@@ -585,12 +666,14 @@ def sync_with_bulbs():
         x = threading.Thread(target=save_state, args=(i,))
         x.start()
     while threading.active_count() > 2:
-        time.sleep(0.05)
+        time.sleep(0.01)
     last_hsv = [[None for _ in range(3)] for _ in range(13)]
     time_after = float(time.time())
+    c = 0
     while run:
-        scr = get_screenshot()
-        time_before = float(time.time())
+        c += 1
+        c %= 5
+        scr = get_screenshot(c)
         i = 0
         while i < len(bulbs):
             k = bulbs[i][0]
@@ -605,17 +688,18 @@ def sync_with_bulbs():
                 while i < len(bulbs) and bulbs[i][0] == k:
                     brightness = bulbs[i][3]
                     v1 = int(v * brightness / 100)
-                    bulbs[i][1].set_hsv(h, s, v1)
+                    bulbs[i][1].set_hsv(h, s, v1, 60 / rate * 1000)
                     i += 1
+        time_before = float(time.time())
         time_since_last = time_before - time_after
-        if time_since_last < rate:
-            time.sleep(rate - time_since_last)
+        if time_since_last < 60 / rate:
+            time.sleep(60 / rate - time_since_last)
         time_after = float(time.time())
     for i in range(len(bulbs)):
         x = threading.Thread(target=revert_state, args=(i,))
         x.start()
     while threading.active_count() > 2:
-        time.sleep(0.05)
+        time.sleep(0.01)
 
 
 if __name__ == "__main__":
@@ -628,6 +712,7 @@ if __name__ == "__main__":
     global start_button
     global config_button
     global exit_button
+    global main_window
     load()
     main_window = Tk()
     main_window.resizable(False, False)
