@@ -10,3 +10,9 @@ Install:
 # Future features
 GUI update:   
 -a new look(any ideas are helpful)   
+And more
+# Devices  
+I only have W3 bulbs but all yeelight products should work.  
+If someone has another devices please let me know if they work.  
+## Support
+If you like my work and have some extra money please help me to buy some yeelight bulbs to test the app.(I'm only 16 years old and my parents don't give me much money, so I can't buy many products :(( )
