@@ -169,7 +169,7 @@ def determine_hsv(scr, position):
     return h, s, v
 
 
-def get_screenshot(c):
+def get_screenshot():
     def trim(im):
         bg = Image.new(im.mode, im.size, im.getpixel((0, 0)))
         diff = ImageChops.difference(im, bg)
@@ -178,13 +178,15 @@ def get_screenshot(c):
 
     global bar_correction
     global bbox
-    scr = ImageGrab.grab().resize((120, 120))
-    if c == 0 and bar_correction is True:
+    scr = ImageGrab.grab().resize((120, 120), resample=4)
+    if bar_correction is True:
         bbox = trim(scr)
-    if bbox is None or bar_correction is False:
-        return scr.resize((3, 3))
+        if bbox is not None:
+            return scr.crop(bbox).resize((3, 3), resample=1)
+        else:
+            return scr.resize((3, 3), resample=1)
     else:
-        return scr.crop(bbox).resize((3, 3))
+        return scr.resize((3, 3), resample=1)
 
 
 def load():
@@ -305,7 +307,7 @@ def modify_configuration():
     configuration_window = Toplevel(main_window)
     configuration_window.resizable(False, False)
     configuration_window.title("Edit Configuration")
-    configuration_window.iconbitmap('Logo2.ico')
+    # configuration_window.iconbitmap('Logo2.ico')
     bulb_list = Listbox(configuration_window, font=("Arial", 12), width=50, height=10)
     bulb_list.grid(row=0, rowspan=4, column=0, columnspan=2)
     show_bulbs()
@@ -319,7 +321,7 @@ def modify_configuration():
     black_bar_check = Checkbutton(configuration_window, text="Correct black bars", variable=check,
                                   command=black_check_update, font=("Arial", 17), width=15)
     black_bar_check.grid(row=4, column=0, columnspan=2)
-    rate_text = Label(configuration_window, text="Updates per min (max 2500)", font=("Arial", 17))
+    rate_text = Label(configuration_window, text="Updates per min (max 2000)", font=("Arial", 17))
     rate_text.grid(row=5, column=0)
 
     def validate(u_input):
@@ -328,7 +330,7 @@ def modify_configuration():
                 input_number = int(u_input)
             else:
                 input_number = int(rate_input.get()) * 10 + int(u_input)
-            if input_number > 2500:
+            if input_number > 2000:
                 rate_input.delete(0, END)
                 rate_input.after_idle(lambda: rate_input.configure(validate="all"))
                 rate_input.insert(0, '')
@@ -464,7 +466,7 @@ def add_bulb_auto():
     auto_add_window = Toplevel(configuration_window)
     auto_add_window.resizable(False, False)
     auto_add_window.title("Auto add lights")
-    auto_add_window.iconbitmap('Logo2.ico')
+    # auto_add_window.iconbitmap('Logo2.ico')
     discovered_bulbs_list = Listbox(auto_add_window, font=("Arial", 12), width=50, height=12)
     discovered_bulbs_list.grid(row=0, rowspan=6, column=0)
     auto_discover()
@@ -522,7 +524,7 @@ def edit_bulb():
         edit_window = Toplevel(configuration_window)
         edit_window.resizable(False, False)
         edit_window.title("Edit light's info")
-        edit_window.iconbitmap('Logo2.ico')
+        # edit_window.iconbitmap('Logo2.ico')
         position_text = Label(edit_window, text="Select light's position", font=("Arial", 17))
         position_text.pack()
         position_change = StringVar(edit_window)
@@ -587,7 +589,7 @@ def add_bulb():
     add_bulb_window = Toplevel(configuration_window)
     add_bulb_window.resizable(False, False)
     add_bulb_window.title("Add a new light")
-    add_bulb_window.iconbitmap('Logo2.ico')
+    # add_bulb_window.iconbitmap('Logo2.ico')
     position_text = Label(add_bulb_window, text="Select light's position", font=("Arial", 17))
     position_text.grid(column=0, row=0)
     position_input = StringVar(add_bulb_window)
@@ -669,11 +671,8 @@ def sync_with_bulbs():
         time.sleep(0.01)
     last_hsv = [[None for _ in range(3)] for _ in range(13)]
     time_after = float(time.time())
-    c = 0
     while run:
-        c += 1
-        c %= 5
-        scr = get_screenshot(c)
+        scr = get_screenshot()
         i = 0
         while i < len(bulbs):
             k = bulbs[i][0]
@@ -717,7 +716,7 @@ if __name__ == "__main__":
     main_window = Tk()
     main_window.resizable(False, False)
     main_window.title("Yeembilight")
-    main_window.iconbitmap('Logo2.ico')
+    # main_window.iconbitmap('Logo2.ico')
     start_button = Button(main_window, text="Start", command=start, font=("Arial", 20), width=30)
     start_button.grid(row=0, column=0, columnspan=2)
     config_button = Button(main_window, text="Edit configuration", command=modify_configuration, font=("Arial", 20),
