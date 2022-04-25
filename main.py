@@ -12,7 +12,7 @@ from yeelight import discover_bulbs
 from bulb_yeelight import BulbYeelight
 
 bulbs = []
-rate = 900
+rate = 144
 run = False
 bar_correction = True
 bbox = None

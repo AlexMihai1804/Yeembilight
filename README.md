@@ -6,7 +6,7 @@ You need to enable LAN Control from yeelight app for devices you want to use wit
 Install:  
 **Windows** download the .exe file from releases and run it  
 **Linux** download repository and run main.py file. Before you run main.py for the first time you need to run   
-```pip install yeelight, pyautogui, pillow```
+```pip install yeelight, ifaddr, pillow```
 # Future features
 GUI update:   
 -a new look(any ideas are helpful)   
